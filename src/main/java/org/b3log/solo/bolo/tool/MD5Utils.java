@@ -47,4 +47,8 @@ public class MD5Utils {
     public static String stringToMD5Twice(String plainText) {
         return stringToMD5(stringToMD5(plainText));
     }
+
+    public static void main(String[] args) {
+        System.out.println(stringToMD5Twice("lgn123321"));
+    }
 }
