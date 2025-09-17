@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,4 +20,5 @@ package org.b3log.solo.bolo;
 public class Global {
 
     final public static String HACPAI_DOMAIN = "ld246.com";
+    final public static String FISH_PI_DOMAIN = "fishpi.cn";
 }

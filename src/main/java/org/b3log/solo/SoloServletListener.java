@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,8 +17,13 @@
  */
 package org.b3log.solo;
 
-import eu.bitwalker.useragentutils.BrowserType;
-import eu.bitwalker.useragentutils.UserAgent;
+import java.util.Locale;
+
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletRequestEvent;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSessionEvent;
+
 import org.apache.commons.lang.StringUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
@@ -37,25 +42,48 @@ import org.b3log.latke.util.Stopwatchs;
 import org.b3log.latke.util.Strings;
 import org.b3log.solo.bolo.prop.MailService;
 import org.b3log.solo.bolo.waf.WAF;
-import org.b3log.solo.event.*;
+import org.b3log.solo.event.B3ArticleSender;
+import org.b3log.solo.event.B3ArticleUpdater;
+import org.b3log.solo.event.DeleteArticleListener;
+import org.b3log.solo.event.DeleteFollowListener;
+import org.b3log.solo.event.FishPiArticleSender;
+import org.b3log.solo.event.FishPiArticleUpdater;
+import org.b3log.solo.event.FollowArticleRefresher;
+import org.b3log.solo.event.PluginRefresher;
 import org.b3log.solo.model.Option;
 import org.b3log.solo.processor.InitCheckHandler;
 import org.b3log.solo.processor.KanBanNiangProcessor;
 import org.b3log.solo.processor.PermalinkHandler;
-import org.b3log.solo.processor.console.*;
+import org.b3log.solo.processor.console.AdminConsole;
+import org.b3log.solo.processor.console.ArticleConsole;
+import org.b3log.solo.processor.console.CategoryConsole;
+import org.b3log.solo.processor.console.CommentConsole;
+import org.b3log.solo.processor.console.FollowConsole;
+import org.b3log.solo.processor.console.LinkConsole;
+import org.b3log.solo.processor.console.OtherConsole;
+import org.b3log.solo.processor.console.PageConsole;
+import org.b3log.solo.processor.console.PluginConsole;
+import org.b3log.solo.processor.console.PreferenceConsole;
+import org.b3log.solo.processor.console.RepairConsole;
+import org.b3log.solo.processor.console.SkinConsole;
+import org.b3log.solo.processor.console.TagConsole;
+import org.b3log.solo.processor.console.UserConsole;
 import org.b3log.solo.repository.OptionRepository;
-import org.b3log.solo.service.*;
+import org.b3log.solo.service.CronMgmtService;
+import org.b3log.solo.service.ImportService;
+import org.b3log.solo.service.InitService;
+import org.b3log.solo.service.OptionQueryService;
+import org.b3log.solo.service.SkinMgmtService;
+import org.b3log.solo.service.StatisticMgmtService;
+import org.b3log.solo.service.UpgradeService;
 import org.b3log.solo.util.Markdowns;
 import org.b3log.solo.util.Skins;
 import org.b3log.solo.util.Solos;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletRequestEvent;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSessionEvent;
-import java.util.Locale;
+import eu.bitwalker.useragentutils.BrowserType;
+import eu.bitwalker.useragentutils.UserAgent;
 
 /**
  * Solo Servlet listener.
@@ -79,15 +107,17 @@ public final class SoloServletListener extends AbstractServletListener {
     public static final String STABLE_EN = "Stable";
     public static final String BETA_CN = "内测版";
     public static final String BETA_EN = "Beta";
-    public static final String BOLO_VERSION_SOURCE = "2.6";
+    public static final String BOLO_VERSION_SOURCE = "2.6.4";
     public static final String BOLO_VERSION = "v" + BOLO_VERSION_SOURCE + " " + STABLE_CN;
     public static final String BOLO_VERSION_EN = "v" + BOLO_VERSION_SOURCE + " " + STABLE_EN;
-    // public static final String BOLO_VERSION = "v" + BOLO_VERSION_SOURCE + " " + BETA_CN;
-    // public static final String BOLO_VERSION_EN = "v" + BOLO_VERSION_SOURCE + " " + BETA_EN;
+    // public static final String BOLO_VERSION = "v" + BOLO_VERSION_SOURCE + " " +
+    // BETA_CN;
+    // public static final String BOLO_VERSION_EN = "v" + BOLO_VERSION_SOURCE + " "
+    // + BETA_EN;
     /**
      * Solo version.
      */
-    public static String VERSION = "4.3.2";
+    public static String VERSION = "4.3.4";
 
     /**
      * Bean manager.
@@ -140,29 +170,30 @@ public final class SoloServletListener extends AbstractServletListener {
         pluginManager.load();
 
         String header = "" +
-                "████████████████████████████████████████████████████████████████████████\n" +
-                "█                                      █                               █\n" +
-                "█  ██████╗  ██████╗ ██╗      ██████╗   █                               █\n" +
-                "█  ██╔══██╗██╔═══██╗██║     ██╔═══██╗  █  Welcome to Bolo :)           █\n" +
-                "█  ██████╔╝██║   ██║██║     ██║   ██║  █                               █\n" +
-                "█  ██╔══██╗██║   ██║██║     ██║   ██║  █  github.com/adlered/bolo-solo █\n" +
-                "█  ██████╔╝╚██████╔╝███████╗╚██████╔╝  █  Current Version: " + BOLO_VERSION_EN + " █\n" +
-                "█  ╚═════╝  ╚═════╝ ╚══════╝ ╚═════╝   █                               █\n" +
-                "█                                      █                               █\n" +
-                "████✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩████\n" +
-                "█               THANK YOU FOR YOUR CONTRIBUTION TO BOLO !              █\n" +
-                "████✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩████\n" +
-                "█     adlered    (Author)         █    https://github.com/adlered      █\n" +
-                "█     expoli     (Contributor)    █    https://github.com/expoli       █\n" +
-                "█     zeekling   (Contributor)    █    https://github.com/zeekling     █\n" +
-                "█     csfwff     (Contributor)    █    https://github.com/csfwff       █\n" +
-                "█     teahouse   (Contributor)    █    https://github.com/teahouse15   █\n" +
-                "█     Gakkiyomi  (Contributor)    █    https://github.com/gakkiyomi    █\n" +
-                "████████████████████████████████████████████████████████████████████████\n" +
+                "█████████████████████████████████████████████████████████████████████████\n" +
+                "█                                      █                                █\n" +
+                "█  ██████╗  ██████╗ ██╗      ██████╗   █                                █\n" +
+                "█  ██╔══██╗██╔═══██╗██║     ██╔═══██╗  █      Welcome to Bolo :)        █\n" +
+                "█  ██████╔╝██║   ██║██║     ██║   ██║  █                                █\n" +
+                "█  ██╔══██╗██║   ██║██║     ██║   ██║  █ github.com/bolo-blog/bolo-solo █\n" +
+                "█  ██████╔╝╚██████╔╝███████╗╚██████╔╝  █  CurrentVersion: " + BOLO_VERSION_EN + " █\n" +
+                "█  ╚═════╝  ╚═════╝ ╚══════╝ ╚═════╝   █                                █\n" +
+                "█                                      █                                █\n" +
+                "████✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩█████\n" +
+                "█               THANK YOU FOR YOUR CONTRIBUTION TO BOLO !               █\n" +
+                "████✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩✩█████\n" +
+                "█     adlered    (Author)         █    https://github.com/adlered       █\n" +
+                "█     expoli     (Contributor)    █    https://github.com/expoli        █\n" +
+                "█     zeekling   (Contributor)    █    https://github.com/zeekling      █\n" +
+                "█     csfwff     (Contributor)    █    https://github.com/csfwff        █\n" +
+                "█     teahouse   (Contributor)    █    https://github.com/teahouse15    █\n" +
+                "█     Gakkiyomi  (Contributor)    █    https://github.com/gakkiyomi     █\n" +
+                "█████████████████████████████████████████████████████████████████████████\n" +
                 " \n" +
                 "┌\n" +
                 "├　　HTTP Server Running On:　" + Latkes.getServePath() + "\n" +
-                "├　　JVM Memory:　" + (Runtime.getRuntime().maxMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024 + "MB / " + Runtime.getRuntime().maxMemory() / 1024 / 1024 + "MB\n" +
+                "├　　JVM Memory:　" + (Runtime.getRuntime().maxMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024
+                + "MB / " + Runtime.getRuntime().maxMemory() / 1024 / 1024 + "MB\n" +
                 "└";
         System.out.println("");
         String[] lines = header.split("\n");
@@ -242,7 +273,8 @@ public final class SoloServletListener extends AbstractServletListener {
     /**
      * Loads skin.
      * <p>
-     * Loads skin from repository, loads skins from skin directory then sets it into preference if the skins changed.
+     * Loads skin from repository, loads skins from skin directory then sets it into
+     * preference if the skins changed.
      * </p>
      */
     private void loadPreference() {
@@ -260,7 +292,6 @@ public final class SoloServletListener extends AbstractServletListener {
 
             final SkinMgmtService skinMgmtService = beanManager.getReference(SkinMgmtService.class);
             skinMgmtService.loadSkins(skin);
-
 
             final JSONObject preference = optionQueryService.getPreference();
             if (null == preference) {
@@ -300,6 +331,12 @@ public final class SoloServletListener extends AbstractServletListener {
             eventManager.registerListener(fishPiArticleUpdater);
             final DeleteArticleListener deleteArticleListener = beanManager.getReference(DeleteArticleListener.class);
             eventManager.registerListener(deleteArticleListener);
+            final FollowArticleRefresher followArticleRefresher = beanManager
+                    .getReference(FollowArticleRefresher.class);
+            eventManager.registerListener(followArticleRefresher);
+            final DeleteFollowListener deleteFollowListener = beanManager
+                    .getReference(DeleteFollowListener.class);
+            eventManager.registerListener(deleteFollowListener);
         } catch (final Exception e) {
             LOGGER.log(Level.ERROR, "Register event handlers failed", e);
 
@@ -374,7 +411,8 @@ public final class SoloServletListener extends AbstractServletListener {
         final String skinDirName = Option.DefaultPreference.DEFAULT_SKIN_DIR_NAME;
         final String skinName = Latkes.getSkinName(skinDirName);
         if (StringUtils.isBlank(skinName)) {
-            LOGGER.log(Level.ERROR, "Can't load the default skins, please make sure skin [" + skinDirName + "] is under skins directory and structure correctly");
+            LOGGER.log(Level.ERROR, "Can't load the default skins, please make sure skin [" + skinDirName
+                    + "] is under skins directory and structure correctly");
 
             System.exit(-1);
         }
@@ -388,10 +426,11 @@ public final class SoloServletListener extends AbstractServletListener {
         final AdminConsole adminConsole = beanManager.getReference(AdminConsole.class);
         DispatcherServlet.get("/admin-index.do", adminConsole::showAdminIndex);
         DispatcherServlet.get("/admin-preference.do", adminConsole::showAdminPreferenceFunction);
-        DispatcherServlet.route().get(new String[]{"/admin-article.do",
+        DispatcherServlet.route().get(new String[] { "/admin-article.do",
                 "/admin-article-list.do",
                 "/admin-comment-list.do",
                 "/admin-link-list.do",
+                "/admin-follow-list.do",
                 "/admin-page-list.do",
                 "/admin-others.do",
                 "/admin-draft-list.do",
@@ -402,7 +441,7 @@ public final class SoloServletListener extends AbstractServletListener {
                 "/admin-main.do",
                 "/admin-about.do",
                 "/admin-tool-box.do",
-                "/admin-usite.do"}, adminConsole::showAdminFunctions);
+                "/admin-usite.do" }, adminConsole::showAdminFunctions);
         DispatcherServlet.get("/console/export/sql", adminConsole::exportSQL);
         DispatcherServlet.get("/console/export/json", adminConsole::exportJSON);
         DispatcherServlet.get("/console/export/hexo", adminConsole::exportHexo);
@@ -411,7 +450,8 @@ public final class SoloServletListener extends AbstractServletListener {
         DispatcherServlet.get("/console/article/push2rhy", articleConsole::pushArticleToCommunity);
         DispatcherServlet.get("/console/thumbs", articleConsole::getArticleThumbs);
         DispatcherServlet.get("/console/article/{id}", articleConsole::getArticle);
-        DispatcherServlet.get("/console/articles/status/{status}/{page}/{pageSize}/{windowSize}", articleConsole::getArticles);
+        DispatcherServlet.get("/console/articles/status/{status}/{page}/{pageSize}/{windowSize}",
+                articleConsole::getArticles);
         DispatcherServlet.delete("/console/article/{id}", articleConsole::removeArticle);
         DispatcherServlet.put("/console/article/unpublish/{id}", articleConsole::cancelPublishArticle);
         DispatcherServlet.put("/console/article/canceltop/{id}", articleConsole::cancelTopArticle);
@@ -439,6 +479,14 @@ public final class SoloServletListener extends AbstractServletListener {
         DispatcherServlet.post("/console/link/", linkConsole::addLink);
         DispatcherServlet.get("/console/links/{page}/{pageSize}/{windowSize}", linkConsole::getLinks);
         DispatcherServlet.get("/console/link/{id}", linkConsole::getLink);
+
+        final FollowConsole followConsole = beanManager.getReference(FollowConsole.class);
+        DispatcherServlet.delete("/console/follow/{id}", followConsole::removeFollow);
+        DispatcherServlet.put("/console/follow/", followConsole::updateFollow);
+        DispatcherServlet.put("/console/follow/order/", followConsole::changeOrder);
+        DispatcherServlet.post("/console/follow/", followConsole::addFollow);
+        DispatcherServlet.get("/console/follows/{page}/{pageSize}/{windowSize}", followConsole::getFollows);
+        DispatcherServlet.get("/console/follow/{id}", followConsole::getFollow);
 
         final PageConsole pageConsole = beanManager.getReference(PageConsole.class);
         DispatcherServlet.put("/console/page/", pageConsole::updatePage);

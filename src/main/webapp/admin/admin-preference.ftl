@@ -1,7 +1,7 @@
 <#--
 
     Bolo - A stable and beautiful blogging system based in Solo.
-    Copyright (c) 2020, https://github.com/adlered
+    Copyright (c) 2020-present, https://github.com/bolo-blog
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -627,6 +627,13 @@
         <label class="checkbox">
             <input id="enableAutoFlushGitHub" type="checkbox" class="normalInput"/>
             <span>&nbsp;${autoFlushGitHubLabel}</span>
+        </label>
+        <div class="fn__clear"></div>
+        ${myGitHubProfileLabel}
+        <br>
+        <label class="checkbox">
+            <input id="enableAutoFlushGitHubProfile" type="checkbox" class="normalInput"/>
+            <span>&nbsp;${autoFlushGitHubProfileLabel}</span>
         </label>
         <br>
         <label for="myGitHubID">${myGitHubIDLabel}</label>

@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,11 +17,16 @@
  */
 package org.b3log.solo.service;
 
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.b3log.latke.Keys;
-import org.b3log.latke.Latkes;
-import org.b3log.latke.event.Event;
 import org.b3log.latke.event.EventManager;
 import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
@@ -35,17 +40,23 @@ import org.b3log.latke.service.ServiceException;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.latke.util.Ids;
 import org.b3log.latke.util.Strings;
-import org.b3log.solo.bolo.tool.MD5Utils;
-import org.b3log.solo.event.EventTypes;
-import org.b3log.solo.model.*;
+import org.b3log.solo.bolo.Global;
+import org.b3log.solo.model.Article;
+import org.b3log.solo.model.Comment;
+import org.b3log.solo.model.Common;
+import org.b3log.solo.model.Option;
+import org.b3log.solo.model.UserExt;
 import org.b3log.solo.repository.ArticleRepository;
 import org.b3log.solo.repository.CommentRepository;
 import org.b3log.solo.repository.UserRepository;
 import org.b3log.solo.util.Markdowns;
+import org.b3log.solo.util.Solos;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Date;
+import jodd.http.HttpRequest;
+import jodd.http.HttpResponse;
 
 /**
  * Comment management service.
@@ -93,6 +104,15 @@ public class CommentMgmtService {
      */
     @Inject
     private ArticleMgmtService articleMgmtService;
+
+    @Inject
+    private ArticleQueryService articleQueryService;
+
+    @Inject
+    private UserQueryService userQueryService;
+
+    @Inject
+    private CommentQueryService commentQueryService;
 
     /**
      * Comment repository.
@@ -144,12 +164,14 @@ public class CommentMgmtService {
      *                          "commentURL": "",
      *                          "commentContent": "",
      *                          }
-     * @return check result, for example, <pre>
+     * @return check result, for example,
+     * 
+     *         <pre>
      * {
      *     "sc": boolean,
      *     "msg": "" // Exists if "sc" equals to false
      * }
-     * </pre>
+     *         </pre>
      */
     public JSONObject checkAddCommentRequest(final JSONObject requestJSONObject) {
         final JSONObject ret = new JSONObject();
@@ -202,7 +224,8 @@ public class CommentMgmtService {
 
             String commentContent = requestJSONObject.optString(Comment.COMMENT_CONTENT);
 
-            if (MAX_COMMENT_CONTENT_LENGTH < commentContent.length() || MIN_COMMENT_CONTENT_LENGTH > commentContent.length()) {
+            if (MAX_COMMENT_CONTENT_LENGTH < commentContent.length()
+                    || MIN_COMMENT_CONTENT_LENGTH > commentContent.length()) {
                 LOGGER.log(Level.WARN, "Comment content length is invalid[{0}]", commentContent.length());
                 ret.put(Keys.MSG, langPropsService.get("commentContentCannotEmptyLabel"));
 
@@ -234,7 +257,9 @@ public class CommentMgmtService {
      *                          "commentContent": "",
      *                          "commentOriginalCommentId": "" // optional
      *                          }
-     * @return add result, for example,      <pre>
+     * @return add result, for example,
+     * 
+     *         <pre>
      * {
      *     "oId": "", // generated comment id
      *     "commentDate": "", // format: yyyy-MM-dd HH:mm:ss
@@ -250,7 +275,8 @@ public class CommentMgmtService {
      *     "commentable": boolean,
      *     "permalink": "" // article.articlePermalink
      * }
-     * </pre>
+     *         </pre>
+     * 
      * @throws ServiceException service exception
      */
     public JSONObject addArticleComment(final JSONObject requestJSONObject) throws ServiceException {
@@ -274,14 +300,17 @@ public class CommentMgmtService {
             comment.put(Comment.COMMENT_NAME, commentName);
             comment.put(Comment.COMMENT_URL, commentURL);
             comment.put(Comment.COMMENT_CONTENT, commentContent);
-            comment.put(Comment.COMMENT_ORIGINAL_COMMENT_ID, requestJSONObject.optString(Comment.COMMENT_ORIGINAL_COMMENT_ID));
-            comment.put(Comment.COMMENT_ORIGINAL_COMMENT_NAME, requestJSONObject.optString(Comment.COMMENT_ORIGINAL_COMMENT_NAME));
+            comment.put(Comment.COMMENT_ORIGINAL_COMMENT_ID,
+                    requestJSONObject.optString(Comment.COMMENT_ORIGINAL_COMMENT_ID));
+            comment.put(Comment.COMMENT_ORIGINAL_COMMENT_NAME,
+                    requestJSONObject.optString(Comment.COMMENT_ORIGINAL_COMMENT_NAME));
             final JSONObject preference = optionQueryService.getPreference();
             final Date date = new Date();
             comment.put(Comment.COMMENT_CREATED, date.getTime());
             ret.put(Comment.COMMENT_T_DATE, DateFormatUtils.format(date, "yyyy-MM-dd HH:mm:ss"));
             ret.put("commentDate2", date);
-            ret.put(Common.COMMENTABLE, preference.getBoolean(Option.ID_C_COMMENTABLE) && article.getBoolean(Article.ARTICLE_COMMENTABLE));
+            ret.put(Common.COMMENTABLE,
+                    preference.getBoolean(Option.ID_C_COMMENTABLE) && article.getBoolean(Article.ARTICLE_COMMENTABLE));
             ret.put(Common.PERMALINK, article.getString(Article.ARTICLE_PERMALINK));
             ret.put(Comment.COMMENT_NAME, commentName);
             String cmtContent = Markdowns.toHTML(commentContent);
@@ -313,7 +342,8 @@ public class CommentMgmtService {
                 newUser.put(User.USER_NAME, commentName);
                 newUser.put(User.USER_URL, commentURL);
                 newUser.put(User.USER_ROLE, Role.VISITOR_ROLE);
-                newUser.put(UserExt.USER_AVATAR, "https://pic.stackoverflow.wiki/uploadImages/114/246/231/87/2020/06/06/02/26/65e10ea4-41e0-4da8-82fa-a00da2770ce2.png");
+                newUser.put(UserExt.USER_AVATAR,
+                        "https://pic.stackoverflow.wiki/uploadImages/114/246/231/87/2020/06/06/02/26/65e10ea4-41e0-4da8-82fa-a00da2770ce2.png");
                 newUser.put(UserExt.USER_B3_KEY, "0a45c98b7f065e77accc819d08882200");
                 newUser.put(UserExt.USER_GITHUB_ID, "000000");
                 userRepository.add(newUser);
@@ -369,6 +399,16 @@ public class CommentMgmtService {
         }
     }
 
+    public void removeArticleAllComment(final String articleId) throws ServiceException {
+        try {
+            commentRepository.removeComments(articleId);
+            setArticleCommentCount(articleId, 0);
+        } catch (final Exception e) {
+            LOGGER.log(Level.ERROR, "Removes a comment of an article failed", e);
+            throw new ServiceException(e);
+        }
+    }
+
     /**
      * Article comment count -1 for an article specified by the given article id.
      *
@@ -384,6 +424,14 @@ public class CommentMgmtService {
         articleRepository.update(articleId, newArticle, Article.ARTICLE_COMMENT_COUNT);
     }
 
+    private void setArticleCommentCount(final String articleId, final int cnt)
+            throws JSONException, RepositoryException {
+        final JSONObject article = articleRepository.get(articleId);
+        final JSONObject newArticle = new JSONObject(article, JSONObject.getNames(article));
+        newArticle.put(Article.ARTICLE_COMMENT_COUNT, cnt);
+        articleRepository.update(articleId, newArticle, Article.ARTICLE_COMMENT_COUNT);
+    }
+
     /**
      * Sets commenter thumbnail URL for the specified comment.
      *
@@ -395,5 +443,125 @@ public class CommentMgmtService {
         final JSONObject commenter = userRepository.getByUserName(commenterName);
         final String avatarURL = commenter.optString(UserExt.USER_AVATAR);
         comment.put(Comment.COMMENT_THUMBNAIL_URL, avatarURL);
+    }
+
+    public void syncAllArticleCommentFromFishPI() {
+        final Transaction transaction = commentRepository.beginTransaction();
+        try {
+            LOGGER.log(Level.INFO, "Sync comment from fishpi start");
+            // sync article comment with fishpi use option fishpiArticleRef
+            final JSONObject fishPiArticleRef = optionQueryService.getOptions("fishPiArticleRef");
+            if (fishPiArticleRef == null) {
+                LOGGER.log(Level.WARN, "fishPiArticleRef is null, sync aborted.");
+                transaction.commit();
+                return;
+            }
+            final Map<String, Object> fishPiArticleRefMap = new HashMap<>();
+            Iterator<String> keys = fishPiArticleRef.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                fishPiArticleRefMap.put(key, fishPiArticleRef.get(key));
+            }
+            for (Map.Entry<String, Object> entry : fishPiArticleRefMap.entrySet()) {
+                final String localaid = entry.getKey().split("_")[1];
+                final String remoteaid = (String) entry.getValue();
+                if (localaid != null && remoteaid != null) {
+                    LOGGER.log(Level.INFO, String.format("===> Article: %s , PAGE 1 <===", localaid));
+                    int pageCount = syncCommentFromFishPI(
+                            Long.parseLong(localaid),
+                            Long.parseLong(remoteaid),
+                            1);
+                    if (pageCount == -1) {
+                        LOGGER.log(Level.ERROR, "评论同步失败，无法连接到摸鱼派服务器或 apiKey 错误。");
+                    } else if (pageCount == 0) {
+                        LOGGER.log(Level.ERROR, "远端文章评论为空");
+                    } else if (pageCount > 1) {
+                        for (int i = 2; i <= pageCount; i++) {
+                            LOGGER.log(Level.INFO,
+                                    String.format("===> Article: %s , PAGE %s <===", localaid, i));
+                            syncCommentFromFishPI(
+                                    Long.parseLong(localaid),
+                                    Long.parseLong(remoteaid),
+                                    i);
+                        }
+                    }
+                }
+            }
+            LOGGER.log(Level.INFO, "Sync comment from fishpi success");
+            transaction.commit();
+        } catch (final Throwable e) {
+            if (transaction.isActive()) {
+                transaction.rollback();
+            }
+            LOGGER.log(Level.ERROR, "Sync comment from fishpi failed", e);
+        }
+    }
+
+    public int syncCommentFromFishPI(long localaid, long remoteaid, int page) {
+        // 获取本地文章信息
+        final String articleId = String.valueOf(localaid);
+        final JSONObject article = articleQueryService.getArticleById(articleId);
+        String fetchURL = "https://" + Global.FISH_PI_DOMAIN + "/api/article/" + remoteaid;
+        // 从远程拉取评论列表
+        final Map<String, String> query = new HashMap<>();
+        query.put("p", Integer.toString(page));
+        query.put("apiKey", userQueryService.getFishKey());
+        final HttpResponse res = HttpRequest.get(fetchURL).query(query).connectionTimeout(3000).timeout(7000)
+                .header("User-Agent", Solos.USER_AGENT).send();
+        if (200 != res.statusCode()) {
+            return -1;
+        }
+        res.charset("UTF-8");
+        final JSONObject result = new JSONObject(res.bodyText());
+        JSONArray rslt;
+        try {
+            rslt = result.optJSONObject("data").optJSONObject("article").optJSONArray("articleComments");
+            if (null == rslt || 0 == rslt.length()) {
+                return 0;
+            }
+            final HashMap<String, String> idNameMapping = new HashMap<>();
+            Map<String, JSONObject> commpentMaps = commentQueryService.getComments(articleId).stream()
+                    .collect(Collectors.toMap(obj -> obj.optString("oId"), Function.identity()));
+            for (Object o : rslt) {
+                JSONObject object = (JSONObject) o;
+                String commentContent = object.optString("commentContent");
+
+                String id = object.optString("oId");
+                if (commpentMaps.containsKey(id)) {
+                    System.out.println("Import content skip: " + commentContent);
+                    continue;
+                }
+                System.out.println("Import content: " + commentContent);
+                String link = String.format("https://%s/member/%s", Global.FISH_PI_DOMAIN,
+                        object.optString("commentAuthorName"));
+                String avatar = object.optString("commentAuthorThumbnailURL");
+                String comment = object.optString("commentContent");
+                String author = object.optString("commentAuthorName");
+                String commentOriginalCommentId = object.optString(Comment.COMMENT_ORIGINAL_COMMENT_ID);
+                idNameMapping.put(id, author);
+                final JSONObject commentObject = new JSONObject();
+                commentObject.put(Comment.COMMENT_ORIGINAL_COMMENT_ID, commentOriginalCommentId);
+                commentObject.put(Comment.COMMENT_ORIGINAL_COMMENT_NAME,
+                        idNameMapping.getOrDefault(commentOriginalCommentId, ""));
+                commentObject.put(Comment.COMMENT_NAME, author);
+                commentObject.put(Comment.COMMENT_URL, link);
+                commentObject.put(Comment.COMMENT_CONTENT, comment);
+                commentObject.put(Comment.COMMENT_CREATED, Long.parseLong(id));
+                commentObject.put(Comment.COMMENT_THUMBNAIL_URL, avatar);
+                commentObject.put(Comment.COMMENT_ON_ID, localaid);
+                commentObject.put(Keys.OBJECT_ID, id);
+                final long date = article.optLong(Article.ARTICLE_CREATED);
+                commentObject.put(Comment.COMMENT_SHARP_URL, "/articles/" + DateFormatUtils.format(date, "yyyy/MM/dd")
+                        + "/" + article.optString(Keys.OBJECT_ID) + ".html#" + Long.parseLong(id));
+                commentRepository.add(commentObject);
+                articleMgmtService.incArticleCommentCount(articleId);
+            }
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage());
+            return -1;
+        }
+
+        return Integer
+                .parseInt(result.optJSONObject("data").optJSONObject("pagination").optString("paginationPageCount"));
     }
 }

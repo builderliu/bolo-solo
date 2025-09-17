@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -23,7 +23,32 @@ import org.b3log.latke.logging.Logger;
 import org.b3log.latke.service.annotation.Service;
 import org.b3log.solo.SoloServletListener;
 import org.b3log.solo.model.Option;
-import org.b3log.solo.upgrade.*;
+import org.b3log.solo.upgrade.V299_300;
+import org.b3log.solo.upgrade.V300_310;
+import org.b3log.solo.upgrade.V310_320;
+import org.b3log.solo.upgrade.V320_330;
+import org.b3log.solo.upgrade.V330_340;
+import org.b3log.solo.upgrade.V340_350;
+import org.b3log.solo.upgrade.V350_360;
+import org.b3log.solo.upgrade.V360_361;
+import org.b3log.solo.upgrade.V361_362;
+import org.b3log.solo.upgrade.V362_363;
+import org.b3log.solo.upgrade.V363_364;
+import org.b3log.solo.upgrade.V364_365;
+import org.b3log.solo.upgrade.V365_366;
+import org.b3log.solo.upgrade.V366_367;
+import org.b3log.solo.upgrade.V367_368;
+import org.b3log.solo.upgrade.V368_370;
+import org.b3log.solo.upgrade.V370_380;
+import org.b3log.solo.upgrade.V380_390;
+import org.b3log.solo.upgrade.V390_400;
+import org.b3log.solo.upgrade.V400_410;
+import org.b3log.solo.upgrade.V410_420;
+import org.b3log.solo.upgrade.V420_430;
+import org.b3log.solo.upgrade.V430_431;
+import org.b3log.solo.upgrade.V431_432;
+import org.b3log.solo.upgrade.V432_433;
+import org.b3log.solo.upgrade.V433_434;
 import org.json.JSONObject;
 
 /**
@@ -31,7 +56,8 @@ import org.json.JSONObject;
  *
  * @author <a href="http://88250.b3log.org">Liang Ding (Solo Author)</a>
  * @author <a href="https://github.com/adlered">adlered (Bolo Author)</a>
- * @since 1.2.0
+ * @author <a href="https://github.com/gakkiyomi">adlered (Bolo Commiter)</a>
+ * @since 1.2.1
  */
 @Service
 public class UpgradeService {
@@ -75,7 +101,6 @@ public class UpgradeService {
                     LOGGER.info("Not a bolo skin has set, enabling Bolo Fast Migration.");
                 }
             }
-
 
             final String currentVer = preference.getString(Option.ID_C_VERSION); // 数据库中的版本
             if (SoloServletListener.VERSION.equals(currentVer)) {
@@ -134,6 +159,10 @@ public class UpgradeService {
                         V430_431.perform();
                     case "4.3.1":
                         V431_432.perform();
+                    case "4.3.2":
+                        V432_433.perform();
+                    case "4.3.3":
+                        V433_434.perform();
                         break;
                     default:
                         LOGGER.log(Level.INFO, "Version " + currentVer + " loaded in compatibility mode.");
@@ -142,7 +171,7 @@ public class UpgradeService {
             }
         } catch (final Exception e) {
             LOGGER.log(Level.ERROR, "Upgrade failed, please contact the Bolo developers or reports this "
-                    + "issue: https://github.com/adlered/bolo-solo/issues/new", e);
+                    + "issue: https://github.com/bolo-blog/bolo-solo/issues/new", e);
             System.exit(-1);
         }
     }

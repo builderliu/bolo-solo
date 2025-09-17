@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,6 +17,15 @@
  */
 package org.b3log.solo.bolo.prop;
 
+import static pers.adlered.blog_platform_export_tool.Launcher.run;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
@@ -31,25 +40,25 @@ import org.b3log.latke.servlet.annotation.RequestProcessor;
 import org.b3log.latke.util.Ids;
 import org.b3log.solo.SoloServletListener;
 import org.b3log.solo.bolo.tool.DeleteFolder;
+import org.b3log.solo.bolo.tool.ZipFilterUtils;
 import org.b3log.solo.model.Article;
+import org.b3log.solo.model.Option;
 import org.b3log.solo.repository.UserRepository;
-import org.b3log.solo.service.*;
+import org.b3log.solo.service.ArticleMgmtService;
+import org.b3log.solo.service.ExportService;
+import org.b3log.solo.service.ImportService;
+import org.b3log.solo.service.InitService;
+import org.b3log.solo.service.OptionQueryService;
 import org.b3log.solo.util.Solos;
 import org.json.JSONObject;
-import org.zeroturnaround.zip.ZipUtil;
+
 import pers.adlered.blog_platform_export_tool.module.TranslateResult;
-
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
-import static pers.adlered.blog_platform_export_tool.Launcher.run;
 
 /**
  * <h3>bolo-solo</h3>
- * <p>备份服务</p>
+ * <p>
+ * 备份服务
+ * </p>
  *
  * @author : https://github.com/adlered
  * @date : 2020-01-05 13:39
@@ -119,7 +128,7 @@ public class BackupService {
         }
     }
 
-    @RequestProcessing(value = "/prop/backup/github/do/upload", method = {HttpMethod.GET})
+    @RequestProcessing(value = "/prop/backup/github/do/upload", method = { HttpMethod.GET })
     public void uploadBackupToGithub(final RequestContext context) {
         if (!Solos.isAdminLoggedIn(context)) {
             context.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -128,8 +137,15 @@ public class BackupService {
         }
 
         try {
-            exportService.exportGitHub();
-
+            boolean enableAutoFlushGitHubProfile;
+            try {
+                enableAutoFlushGitHubProfile = optionQueryService
+                        .getOptionById(Option.ID_C_ENABLE_AUTO_FLUSH_BLOG_TO_GITHUB_PROFILE)
+                        .optBoolean(Option.OPTION_VALUE);
+            } catch (Exception e) {
+                enableAutoFlushGitHubProfile = false;
+            }
+            exportService.exportGitHub(enableAutoFlushGitHubProfile);
             context.renderJSON().renderCode(200);
             context.renderJSON().renderMsg("Exported backup to GitHub manual successfully.");
 
@@ -141,7 +157,7 @@ public class BackupService {
         }
     }
 
-    @RequestProcessing(value = "/prop/backup/hacpai/do/upload", method = {HttpMethod.GET})
+    @RequestProcessing(value = "/prop/backup/hacpai/do/upload", method = { HttpMethod.GET })
     public void uploadBackupToHacpai(final RequestContext context) {
         if (!Solos.isAdminLoggedIn(context)) {
             context.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -163,7 +179,7 @@ public class BackupService {
         }
     }
 
-    @RequestProcessing(value = "/import/cnblogs", method = {HttpMethod.POST})
+    @RequestProcessing(value = "/import/cnblogs", method = { HttpMethod.POST })
     public void importFromCnblogs(final RequestContext context) {
         if (!Solos.isAdminLoggedIn(context)) {
             context.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -198,7 +214,8 @@ public class BackupService {
                     article.put(Article.ARTICLE_ABSTRACT, "");
                     article.put(Article.ARTICLE_CONTENT, content);
                     article.put(Article.ARTICLE_TAGS_REF, "待分类");
-                    final String permalink = "/articles/" + DateFormatUtils.format(i.getDate(), "yyyy/MM/dd") + "/" + article.optString(Keys.OBJECT_ID) + ".html";
+                    final String permalink = "/articles/" + DateFormatUtils.format(i.getDate(), "yyyy/MM/dd") + "/"
+                            + article.optString(Keys.OBJECT_ID) + ".html";
                     article.put(Article.ARTICLE_PERMALINK, permalink);
                     article.put(Article.ARTICLE_STATUS, Article.ARTICLE_STATUS_C_PUBLISHED);
                     article.put(Article.ARTICLE_SIGN_ID, "1");
@@ -242,7 +259,7 @@ public class BackupService {
         return;
     }
 
-    @RequestProcessing(value = "/import/markdown", method = {HttpMethod.POST})
+    @RequestProcessing(value = "/import/markdown", method = { HttpMethod.POST })
     public void importFromMarkdown(final RequestContext context) {
         if (!Solos.isAdminLoggedIn(context)) {
             context.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -267,7 +284,7 @@ public class BackupService {
                 File file = new File(markdownsPath + name);
                 item.write(file);
                 item.delete();
-                ZipUtil.unpack(new File(markdownsPath + name), new File(markdownsPath));
+                ZipFilterUtils.unpackFilteredZip(new File(markdownsPath + name), new File(markdownsPath), null);
                 file.delete();
             }
             result = importService.importMarkdownsSync();

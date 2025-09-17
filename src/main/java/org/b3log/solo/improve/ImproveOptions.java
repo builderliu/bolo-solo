@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -20,7 +20,6 @@ package org.b3log.solo.improve;
 import org.b3log.latke.ioc.BeanManager;
 import org.b3log.solo.model.Option;
 import org.b3log.solo.service.OptionQueryService;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 public class ImproveOptions {
@@ -29,9 +28,10 @@ public class ImproveOptions {
 
     /**
      * 查询用户是否加入了用户体验改进计划
+     * 
      * @return String
-     * 空白：还没设置过
-     * false/true：用户已设置
+     *         空白：还没设置过
+     *         false/true：用户已设置
      */
     public static String doJoinHelpImprovePlan() {
         try {

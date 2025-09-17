@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -8279,7 +8279,12 @@
     })),
         function() {
             window.cnblogsConfig = {
-                homeTopImg: ["https://ftp.stackoverflow.wiki/bolo/background/butterfly/1.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/2.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/3.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/4.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/5.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/6.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/7.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/8.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/9.jpg"]
+                homeTopImg: ["https://ftp.stackoverflow.wiki/bolo/background/butterfly/1.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/2.jpg", 
+                "https://ftp.stackoverflow.wiki/bolo/background/butterfly/3.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/4.jpg", 
+                "https://ftp.stackoverflow.wiki/bolo/background/butterfly/5.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/6.jpg", 
+                "https://ftp.stackoverflow.wiki/bolo/background/butterfly/7.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/8.jpg", 
+                "https://ftp.stackoverflow.wiki/bolo/background/butterfly/9.jpg", "https://ftp.stackoverflow.wiki/bolo/background/butterfly/10.jpg",
+                "https://ftp.stackoverflow.wiki/bolo/background/butterfly/11.jpg","https://ftp.stackoverflow.wiki/bolo/background/butterfly/13.jpg"]
             };
             let e, t = window.cnblogsConfig.homeTopImg;
             var n, r;

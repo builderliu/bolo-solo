@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,7 +17,14 @@
  */
 package org.b3log.solo.processor;
 
-import freemarker.template.Template;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.b3log.latke.Keys;
 import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
@@ -30,28 +37,29 @@ import org.b3log.latke.servlet.annotation.RequestProcessor;
 import org.b3log.latke.servlet.renderer.AbstractFreeMarkerRenderer;
 import org.b3log.latke.util.Locales;
 import org.b3log.solo.model.Option;
-import org.b3log.solo.service.*;
+import org.b3log.solo.service.DataModelService;
+import org.b3log.solo.service.OptionMgmtService;
+import org.b3log.solo.service.OptionQueryService;
+import org.b3log.solo.service.StatisticMgmtService;
+import org.b3log.solo.service.UserMgmtService;
 import org.b3log.solo.util.Skins;
 import org.b3log.solo.util.Solos;
 import org.json.JSONObject;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import freemarker.template.Template;
 
 /**
  * User template processor.
  *
  * <p>
- * User can add a template (for example "links.ftl") then visits the page ("links.html").
+ * User can add a template (for example "links.ftl") then visits the page
+ * ("links.html").
  * </p>
  *
  * @author <a href="http://88250.b3log.org">Liang Ding (Solo Author)</a>
  * @author <a href="https://github.com/adlered">adlered (Bolo Author)</a>
- * @since 0.4.5
+ * @author <a href="https://github.com/adlered">gakkiyomi (Bolo Commiter)</a>
+ * @since 0.4.6
  */
 @RequestProcessor
 public class UserTemplateProcessor {
@@ -128,7 +136,8 @@ public class UserTemplateProcessor {
             dataModelService.fillFaviconURL(dataModel, preference);
             dataModelService.fillUsite(dataModel);
             dataModelService.fillUserTemplate(context, template, dataModel, preference);
-            Skins.fillLangs(preference.optString(Option.ID_C_LOCALE_STRING), (String) context.attr(Keys.TEMAPLTE_DIR_NAME), dataModel);
+            Skins.fillLangs(preference.optString(Option.ID_C_LOCALE_STRING),
+                    (String) context.attr(Keys.TEMAPLTE_DIR_NAME), dataModel);
             statisticMgmtService.incBlogViewCount(context, response);
         } catch (final Exception e) {
             LOGGER.log(Level.ERROR, e.getMessage(), e);
@@ -139,6 +148,7 @@ public class UserTemplateProcessor {
 
     /**
      * Refresh usite from hacpai.
+     * 
      * @param context
      */
     @RequestProcessing(value = "/admin/usite/refresh", method = HttpMethod.GET)
@@ -175,7 +185,10 @@ public class UserTemplateProcessor {
         try {
             JSONObject usiteObject = new JSONObject(usite);
             List<String> usiteList = new ArrayList<>();
-            Collections.addAll(usiteList, "usiteUserId", "usiteWeiBo", "usiteQQMusic", "usiteStackOverflow", "usiteDribbble", "usiteGitHub", "usiteMedium", "usiteTwitter", "usiteQQ", "usiteLinkedIn", "usiteSteam", "oId", "usiteInstagram", "usiteCodePen", "usiteWYMusic", "usiteWeChat", "usiteZhiHu", "usiteBehance", "usiteTelegram", "usiteFacebook");
+            Collections.addAll(usiteList, "usiteUserId", "usiteResume", "usiteWeiBo", "usiteQQMusic",
+                    "usiteStackOverflow", "usiteDribbble", "usiteGitHub", "usiteMedium", "usiteTwitter", "usiteQQ",
+                    "usiteLinkedIn", "usiteSteam", "oId", "usiteInstagram", "usiteCodePen", "usiteWYMusic",
+                    "usiteWeChat", "usiteZhiHu", "usiteBehance", "usiteTelegram", "usiteFacebook");
             for (String i : usiteList) {
                 if (!usiteObject.has(i)) {
                     LOGGER.log(Level.ERROR, "Updates usite option failed: Invalid JSON Object.");

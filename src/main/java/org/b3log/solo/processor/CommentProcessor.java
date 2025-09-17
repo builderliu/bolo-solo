@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,10 +17,15 @@
  */
 package org.b3log.solo.processor;
 
-import freemarker.template.Template;
-import jodd.http.Cookie;
-import jodd.http.HttpRequest;
-import jodd.http.HttpResponse;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletResponse;
+
 import org.apache.commons.lang.time.DateFormatUtils;
 import org.b3log.latke.Keys;
 import org.b3log.latke.Latkes;
@@ -28,7 +33,13 @@ import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
 import org.b3log.latke.model.User;
-import org.b3log.latke.repository.*;
+import org.b3log.latke.repository.CompositeFilterOperator;
+import org.b3log.latke.repository.FilterOperator;
+import org.b3log.latke.repository.PropertyFilter;
+import org.b3log.latke.repository.Query;
+import org.b3log.latke.repository.RepositoryException;
+import org.b3log.latke.repository.SortDirection;
+import org.b3log.latke.repository.Transaction;
 import org.b3log.latke.service.LangPropsService;
 import org.b3log.latke.servlet.HttpMethod;
 import org.b3log.latke.servlet.RequestContext;
@@ -49,21 +60,26 @@ import org.b3log.solo.repository.ArticleRepository;
 import org.b3log.solo.repository.CommentRepository;
 import org.b3log.solo.repository.OptionRepository;
 import org.b3log.solo.repository.UserRepository;
-import org.b3log.solo.service.*;
+import org.b3log.solo.service.ArticleMgmtService;
+import org.b3log.solo.service.ArticleQueryService;
+import org.b3log.solo.service.CommentMgmtService;
+import org.b3log.solo.service.CommentQueryService;
+import org.b3log.solo.service.OptionMgmtService;
+import org.b3log.solo.service.OptionQueryService;
+import org.b3log.solo.service.UserMgmtService;
+import org.b3log.solo.service.UserQueryService;
 import org.b3log.solo.util.Skins;
 import org.b3log.solo.util.Solos;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
+
+import freemarker.template.Template;
+import jodd.http.Cookie;
+import jodd.http.HttpRequest;
+import jodd.http.HttpResponse;
 import pers.adlered.simplecurrentlimiter.main.SimpleCurrentLimiter;
 
-import javax.servlet.http.HttpServletResponse;
-import java.io.StringWriter;
-import java.util.*;
 /**
  * Comment processor.
  *
@@ -105,6 +121,9 @@ public class CommentProcessor {
      */
     @Inject
     private OptionQueryService optionQueryService;
+
+    @Inject
+    private OptionMgmtService optionMgmtService;
     /**
      * User repository.
      */
@@ -130,6 +149,12 @@ public class CommentProcessor {
     private CommentRepository commentRepository;
 
     /**
+     * Comment service.
+     */
+    @Inject
+    private CommentQueryService commentQueryService;
+
+    /**
      * Article management service.
      */
     @Inject
@@ -146,6 +171,7 @@ public class CommentProcessor {
      *
      * <p>
      * Request json:
+     * 
      * <pre>
      * {
      *     "captcha": "",
@@ -159,6 +185,7 @@ public class CommentProcessor {
      * </p>
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "oId": generatedCommentId,
@@ -201,7 +228,7 @@ public class CommentProcessor {
             if (username.isEmpty()) {
                 context.sendError(HttpServletResponse.SC_FORBIDDEN);
 
-                return ;
+                return;
             }
         }
         requestJSONObject.put(Comment.COMMENT_NAME, username);
@@ -211,7 +238,7 @@ public class CommentProcessor {
         context.setRenderer(renderer);
         renderer.setJSONObject(jsonObject);
         if (!jsonObject.optBoolean("sc")) {
-            return ;
+            return;
         }
 
         // 禁止冒用管理员评论
@@ -226,7 +253,7 @@ public class CommentProcessor {
                 jsonObject.put(Keys.STATUS_CODE, false);
                 jsonObject.put(Keys.MSG, "你输入了管理员的昵称，但并没有登录！");
 
-                return ;
+                return;
             } else {
                 // 管理员回复不发送邮件提醒
                 try {
@@ -245,7 +272,7 @@ public class CommentProcessor {
             jsonObject.put(Keys.STATUS_CODE, false);
             jsonObject.put(Keys.MSG, langPropsService.get("addTimeoutLabel"));
 
-            return ;
+            return;
         }
 
         // 评论过滤检查
@@ -295,10 +322,10 @@ public class CommentProcessor {
                         originalCommentId,
                         blogSite,
                         username,
-                        blogTitle
-                );
+                        blogTitle);
             } catch (JSONException jsonException) {
-                LOGGER.log(Level.DEBUG, "No originalCommentId for [from=" + commentId + ", to=" + originalCommentId + "]");
+                LOGGER.log(Level.DEBUG,
+                        "No originalCommentId for [from=" + commentId + ", to=" + originalCommentId + "]");
             }
 
             // 提醒博主
@@ -306,7 +333,8 @@ public class CommentProcessor {
                 // 邮件提醒
                 String replyRemindMailBoxAddress = "";
                 try {
-                    replyRemindMailBoxAddress = optionRepository.get(Option.ID_C_REPLY_REMIND).optString(Option.OPTION_VALUE);
+                    replyRemindMailBoxAddress = optionRepository.get(Option.ID_C_REPLY_REMIND)
+                            .optString(Option.OPTION_VALUE);
                 } catch (NullPointerException e) {
                 }
                 String user = requestJSONObject.getString("commentName");
@@ -317,18 +345,17 @@ public class CommentProcessor {
                             blogSite,
                             user,
                             comment,
-                            blogTitle
-                    );
+                            blogTitle);
                 } catch (JSONException jsonException) {
-                    LOGGER.log(Level.DEBUG, "Send admin mail remind failed [replyRemindMailBoxAddress=" + replyRemindMailBoxAddress + "]");
+                    LOGGER.log(Level.DEBUG, "Send admin mail remind failed [replyRemindMailBoxAddress="
+                            + replyRemindMailBoxAddress + "]");
                 }
                 // Server酱提醒
                 ServerJiangService.remindAdmin(
                         blogSite,
                         user,
                         comment,
-                        blogTitle
-                );
+                        blogTitle);
             }
 
             final Map<String, Object> dataModel = new HashMap<>();
@@ -375,7 +402,7 @@ public class CommentProcessor {
     private void fillCommenter(final JSONObject requestJSONObject, final RequestContext context) {
         final JSONObject currentUser = Solos.getCurrentUser(context.getRequest(), context.getResponse());
         if (null == currentUser) {
-            return ;
+            return;
         }
 
         requestJSONObject.put(Comment.COMMENT_NAME, currentUser.optString(User.USER_NAME));
@@ -392,10 +419,8 @@ public class CommentProcessor {
 
         final Query query = new Query().setFilter(CompositeFilterOperator.and(
                 new PropertyFilter(Article.ARTICLE_STATUS, FilterOperator.EQUAL, Article.ARTICLE_STATUS_C_PUBLISHED),
-                new PropertyFilter(Article.ARTICLE_STATUS, FilterOperator.EQUAL, Article.ARTICLE_STATUS_C_PUBLISHED)
-        )).
-                setPageCount(1).
-                addSort(Keys.OBJECT_ID, SortDirection.DESCENDING);
+                new PropertyFilter(Article.ARTICLE_STATUS, FilterOperator.EQUAL, Article.ARTICLE_STATUS_C_PUBLISHED)))
+                .setPageCount(1).addSort(Keys.OBJECT_ID, SortDirection.DESCENDING);
         List<JSONObject> articlesList = new ArrayList<>();
         try {
             final List<JSONObject> articles = articleRepository.getList(query);
@@ -438,8 +463,7 @@ public class CommentProcessor {
                 remoteaid,
                 symphony,
                 1,
-                context
-        );
+                context);
         if (pageCount == -1) {
             context.renderJSON().renderMsg("评论同步失败，无法连接到链滴服务器或 Cookie 错误。");
             return;
@@ -451,8 +475,7 @@ public class CommentProcessor {
                         remoteaid,
                         symphony,
                         i,
-                        context
-                );
+                        context);
             }
         }
 
@@ -460,15 +483,62 @@ public class CommentProcessor {
         context.renderJSON().renderMsg("评论同步成功。");
     }
 
+    /**
+     * Sync comment from HacPai to article
+     *
+     * @param context
+     */
+    @RequestProcessing(value = "/article/fishpi/commentSync/{localaid}/{remoteaid}", method = HttpMethod.GET)
+    public void commentSyncFromFishPI(final RequestContext context) {
+        if (!Solos.isAdminLoggedIn(context)) {
+            context.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+
+            return;
+        }
+
+        final Transaction transaction = commentRepository.beginTransaction();
+        long localaid = Long.parseLong(context.pathVar("localaid"));
+        long remoteaid = Long.parseLong(context.pathVar("remoteaid"));
+        try {
+            System.out.println("===> PAGE 1 <===");
+            int pageCount = commentMgmtService.syncCommentFromFishPI(
+                    localaid,
+                    remoteaid,
+                    1);
+            if (pageCount == -1) {
+                context.renderJSON().renderMsg("评论同步失败，无法连接到摸鱼派服务器或 apiKey 错误。");
+                return;
+            } else if (pageCount == 0) {
+                context.renderJSON().renderMsg("远端文章评论为空");
+                return;
+            } else if (pageCount > 1) {
+                for (int i = 2; i <= pageCount; i++) {
+                    System.out.println("===> PAGE " + i + " <===");
+                    commentMgmtService.syncCommentFromFishPI(
+                            localaid,
+                            remoteaid,
+                            i);
+                }
+            }
+            transaction.commit();
+            final JSONObject option = new JSONObject();
+            option.put(Keys.OBJECT_ID, "article_" + String.valueOf(localaid));
+            option.put(Option.OPTION_CATEGORY, "fishPiArticleRef");
+            option.put(Option.OPTION_VALUE, String.valueOf(remoteaid));
+            optionMgmtService.addOrUpdateOption(option);
+            context.renderJSON().renderMsg("评论同步成功。");
+        } catch (Exception exception) {
+            transaction.rollback();
+        }
+    }
+
     private int syncComment(long localaid, long remoteaid, String symphony, int page, RequestContext context) {
         // 获取本地文章信息
         final JSONObject article = articleQueryService.getArticleById(String.valueOf(localaid));
         String fetchURL = "https://" + Global.HACPAI_DOMAIN + "/api/v2/article/" + remoteaid + "?p=" + page;
         // 从远程拉取评论列表
-        final HttpResponse res = HttpRequest.get(fetchURL).
-                connectionTimeout(3000).timeout(7000).header("User-Agent", Solos.USER_AGENT).
-                cookies(new Cookie("symphony=" + symphony)).
-                send();
+        final HttpResponse res = HttpRequest.get(fetchURL).connectionTimeout(3000).timeout(7000)
+                .header("User-Agent", Solos.USER_AGENT).cookies(new Cookie("symphony=" + symphony)).send();
         if (200 != res.statusCode()) {
             return -1;
         }
@@ -501,7 +571,8 @@ public class CommentProcessor {
                 commentObject.put(Comment.COMMENT_ON_ID, localaid);
                 commentObject.put(Keys.OBJECT_ID, id);
                 final long date = article.optLong(Article.ARTICLE_CREATED);
-                commentObject.put(Comment.COMMENT_SHARP_URL, "/articles/" + DateFormatUtils.format(date, "yyyy/MM/dd") + "/" + article.optString(Keys.OBJECT_ID) + ".html#" + Long.parseLong(id));
+                commentObject.put(Comment.COMMENT_SHARP_URL, "/articles/" + DateFormatUtils.format(date, "yyyy/MM/dd")
+                        + "/" + article.optString(Keys.OBJECT_ID) + ".html#" + Long.parseLong(id));
                 try {
                     commentRepository.add(commentObject);
                     articleMgmtService.incArticleCommentCount(article.optString(Keys.OBJECT_ID));
@@ -510,6 +581,8 @@ public class CommentProcessor {
             } catch (Exception ignored) {
             }
         }
-        return Integer.parseInt(result.optJSONObject("data").optJSONObject("pagination").optString("paginationPageCount"));
+        return Integer
+                .parseInt(result.optJSONObject("data").optJSONObject("pagination").optString("paginationPageCount"));
     }
+
 }

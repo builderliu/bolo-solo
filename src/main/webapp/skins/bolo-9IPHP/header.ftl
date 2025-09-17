@@ -1,7 +1,7 @@
 <#--
 
     Bolo - A stable and beautiful blogging system based in Solo.
-    Copyright (c) 2020, https://github.com/adlered
+    Copyright (c) 2020-present, https://github.com/bolo-blog
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -70,6 +70,9 @@
                 </a>
                 <a rel="archive" href="${servePath}/links.html">
                     <i class="icon-link"></i> ${linkLabel}
+                </a>
+                <a rel="archive" href="${servePath}/follows.html">
+                    <i class="icon-link"></i> ${followLabel}
                 </a>
                 <a rel="alternate" href="${servePath}/rss.xml" rel="section">
                     <i class="icon-rss"></i> RSS
@@ -140,6 +143,11 @@
         <li>
             <a rel="archive" href="${servePath}/links.html">
                 <i class="icon-link"></i> ${linkLabel}
+            </a>
+        </li>
+        <li>
+            <a rel="archive" href="${servePath}/follows.html">
+                <i class="icon-link"></i> ${followLabel}
             </a>
         </li>
         <li>

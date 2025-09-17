@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -42,30 +42,31 @@ admin.usite = {
       success: function (data) {
         if (data.msg === '') {
           usiteJSON = $.parseJSON('' +
-              '\n' +
-              '{\n' +
-              '    "usiteUserId": "",\n' +
-              '    "usiteWeiBo": "",\n' +
-              '    "usiteQQMusic": "",\n' +
-              '    "usiteStackOverflow": "",\n' +
-              '    "usiteDribbble": "",\n' +
-              '    "usiteGitHub": "",\n' +
-              '    "usiteMedium": "",\n' +
-              '    "usiteTwitter": "",\n' +
-              '    "usiteQQ": "",\n' +
-              '    "usiteLinkedIn": "",\n' +
-              '    "usiteSteam": "",\n' +
-              '    "oId": "",\n' +
-              '    "usiteInstagram": "",\n' +
-              '    "usiteCodePen": "",\n' +
-              '    "usiteWYMusic": "",\n' +
-              '    "usiteWeChat": "",\n' +
-              '    "usiteZhiHu": "",\n' +
-              '    "usiteBehance": "",\n' +
-              '    "usiteTelegram": "",\n' +
-              '    "usiteFacebook": ""\n' +
-              '}\n' +
-              '\n');
+            '\n' +
+            '{\n' +
+            '    "usiteUserId": "",\n' +
+            '    "usiteResume": "",\n' +
+            '    "usiteWeiBo": "",\n' +
+            '    "usiteQQMusic": "",\n' +
+            '    "usiteStackOverflow": "",\n' +
+            '    "usiteDribbble": "",\n' +
+            '    "usiteGitHub": "",\n' +
+            '    "usiteMedium": "",\n' +
+            '    "usiteTwitter": "",\n' +
+            '    "usiteQQ": "",\n' +
+            '    "usiteLinkedIn": "",\n' +
+            '    "usiteSteam": "",\n' +
+            '    "oId": "",\n' +
+            '    "usiteInstagram": "",\n' +
+            '    "usiteCodePen": "",\n' +
+            '    "usiteWYMusic": "",\n' +
+            '    "usiteWeChat": "",\n' +
+            '    "usiteZhiHu": "",\n' +
+            '    "usiteBehance": "",\n' +
+            '    "usiteTelegram": "",\n' +
+            '    "usiteFacebook": ""\n' +
+            '}\n' +
+            '\n');
         } else {
           usiteJSON = $.parseJSON(data.msg);
         }

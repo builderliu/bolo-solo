@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -50,6 +50,13 @@ public final class EventTypes {
      * Indicates an add comment to page event.
      */
     public static final String ADD_COMMENT_TO_PAGE = "Add Comment To Page";
+
+    /**
+     * Indicates a modify follow article event.
+     */
+    public static final String FOLLOW_ARTICLE_REFRESH = "Follow Article Refresher";
+
+    public static final String DELETE_FOLLOW = "Delete Follow";
 
     /**
      * Private constructor.

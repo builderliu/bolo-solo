@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -17,6 +17,10 @@
  */
 package org.b3log.solo.service;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.b3log.latke.ioc.Inject;
 import org.b3log.latke.logging.Level;
 import org.b3log.latke.logging.Logger;
@@ -25,10 +29,6 @@ import org.b3log.latke.util.Stopwatchs;
 import org.b3log.solo.model.Option;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Cron management service.
@@ -80,6 +80,12 @@ public class CronMgmtService {
     @Inject
     private UserMgmtService userMgmtService;
 
+    @Inject
+    private CommentMgmtService commentMgmtService;
+
+    @Inject
+    private FollowService followService;
+
     /**
      * Start all cron tasks.
      */
@@ -101,6 +107,7 @@ public class CronMgmtService {
         SCHEDULED_EXECUTOR_SERVICE.scheduleAtFixedRate(() -> {
             try {
                 boolean enableAutoFlushGitHub;
+                boolean enableAutoFlushGitHubProfile;
                 String myGitHubID;
                 try {
                     enableAutoFlushGitHub = preference.getBoolean(Option.ID_C_ENABLE_AUTO_FLUSH_GITHUB);
@@ -114,8 +121,40 @@ public class CronMgmtService {
                         articleMgmtService.refreshGitHub(myGitHubID);
                     }
                 }
-                exportService.exportGitHub();
+                try {
+                    enableAutoFlushGitHubProfile = preference
+                            .getBoolean(Option.ID_C_ENABLE_AUTO_FLUSH_BLOG_TO_GITHUB_PROFILE);
+                } catch (NullPointerException | JSONException e) {
+                    enableAutoFlushGitHubProfile = false;
+                }
+                exportService.exportGitHub(enableAutoFlushGitHubProfile);
             } catch (final Exception e) {
+                LOGGER.log(Level.ERROR, "Executes cron failed", e);
+            } finally {
+                Stopwatchs.release();
+            }
+        }, delay, 1000 * 60 * 60 * 24, TimeUnit.MILLISECONDS);
+        delay += 2000;
+
+        SCHEDULED_EXECUTOR_SERVICE.scheduleAtFixedRate(() -> {
+            try {
+                final String fishKey = userQueryService.getFishKey();
+                if (fishKey == null || "".equals(fishKey)) {
+                    return;
+                }
+                commentMgmtService.syncAllArticleCommentFromFishPI();
+            } catch (final Throwable e) {
+                LOGGER.log(Level.ERROR, "Executes cron failed", e);
+            } finally {
+                Stopwatchs.release();
+            }
+        }, delay, 1000 * 60 * 60 * 24, TimeUnit.MILLISECONDS);
+        delay += 2000;
+
+        SCHEDULED_EXECUTOR_SERVICE.scheduleAtFixedRate(() -> {
+            try {
+                followService.syncAllFollowArticles();
+            } catch (final Throwable e) {
                 LOGGER.log(Level.ERROR, "Executes cron failed", e);
             } finally {
                 Stopwatchs.release();

@@ -1,7 +1,7 @@
 <#--
 
     Bolo - A stable and beautiful blogging system based in Solo.
-    Copyright (c) 2020, https://github.com/adlered
+    Copyright (c) 2020-present, https://github.com/bolo-blog
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -19,10 +19,11 @@
 -->
 <section class="posts-expand">
     <#list articles as article>
+    <#assign isRss = (article.isRss!false)?c == "true">
         <article class="post-item">
             <header>
                 <h2>
-                    <a class="post-title-link" rel="bookmark" href="${servePath}${article.articlePermalink}">
+                    <a class="post-title-link" rel="bookmark" href="${isRss?then(article.articlePermalink, servePath + article.articlePermalink)}">
                         ${article.articleTitle}
                     </a>
                     <#if article.articlePutTop>
@@ -32,7 +33,7 @@
                     </#if>
                     <#if article.hasUpdated>
                         <sup>
-                            <a class="post__sup" href="${servePath}${article.articlePermalink}">
+                            <a class="post__sup" href="${isRss?then(article.articlePermalink, servePath + article.articlePermalink)}">
                                 ${updatedLabel}
                             </a>
                         </sup>
@@ -53,7 +54,7 @@
                     <span>
                         <#if interactive == "on">
                     &nbsp; | &nbsp;
-                    <a href="${servePath}${article.articlePermalink}#comments">
+                    <a href="${isRss?then(article.articlePermalink, servePath + article.articlePermalink)}#comments">
                         ${article.articleCommentCount} ${cmtLabel}</a>
                 </span>
                 </#if>
@@ -64,7 +65,7 @@
                 ${article.articleAbstract}
             </div>
             <div class="post-more-link">
-                <a href="${servePath}${article.articlePermalink}#more" rel="contents">
+                <a href="${isRss?then(article.articlePermalink, servePath + article.articlePermalink)}#more" rel="contents">
                     ${readLabel} &raquo;
                 </a>
             </div>

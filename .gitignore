@@ -5,3 +5,7 @@
 .project
 .settings
 .idea/
+.vscode/
+/image/
+/temp/
+src/main/webapp/tmp_favicon

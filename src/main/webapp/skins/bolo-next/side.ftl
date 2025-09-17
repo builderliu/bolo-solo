@@ -1,7 +1,7 @@
 <#--
 
     Bolo - A stable and beautiful blogging system based in Solo.
-    Copyright (c) 2020, https://github.com/adlered
+    Copyright (c) 2020-present, https://github.com/bolo-blog
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -107,6 +107,19 @@
                 <a rel="friend" href="${link.linkAddress}" 
                    title="${link.linkDescription}" target="_blank">
                     ${link.linkTitle}
+                </a>
+            </span>
+            </#list>
+        </div>
+        </#if>
+        <#if 0 != follows?size>
+        <div class="links-of-author">
+            <p class="site-author-name">Follows</p>
+            <#list follows as follow>
+            <span class="links-of-author-item">
+                <a rel="friend" href="${servePath}/follow/articles/${follow.followTitle}" 
+                   title="${follow.followDescription}" target="_blank">
+                    ${follow.followTitle}
                 </a>
             </span>
             </#list>

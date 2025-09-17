@@ -1,6 +1,6 @@
 /*
  * Bolo - A stable and beautiful blogging system based in Solo.
- * Copyright (c) 2020, https://github.com/adlered
+ * Copyright (c) 2020-present, https://github.com/bolo-blog
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -16,6 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 package org.b3log.solo.processor.console;
+
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,12 +44,6 @@ import org.b3log.solo.service.TagQueryService;
 import org.b3log.solo.util.Solos;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Category console request processing.
@@ -92,6 +90,7 @@ public class CategoryConsole {
      * Changes a category order by the specified category id and direction.
      * <p>
      * Request json:
+     * 
      * <pre>
      * {
      *     "oId": "",
@@ -101,6 +100,7 @@ public class CategoryConsole {
      * </p>
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "sc": boolean,
@@ -139,6 +139,7 @@ public class CategoryConsole {
      * Gets a category by the specified request.
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "sc": boolean,
@@ -196,6 +197,7 @@ public class CategoryConsole {
      * Removes a category by the specified request.
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "sc": boolean,
@@ -230,6 +232,7 @@ public class CategoryConsole {
      * Updates a category by the specified request.
      * <p>
      * Request json:
+     * 
      * <pre>
      * {
      *     "oId": "",
@@ -242,6 +245,7 @@ public class CategoryConsole {
      * </p>
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "sc": boolean,
@@ -263,6 +267,8 @@ public class CategoryConsole {
 
             final String categoryId = requestJSON.optString(Keys.OBJECT_ID);
             final String title = requestJSON.optString(Category.CATEGORY_TITLE, "Category");
+            String uri = requestJSON.optString(Category.CATEGORY_URI);
+            final JSONObject targetCategory = categoryQueryService.getCategory(categoryId);
             JSONObject mayExist = categoryQueryService.getByTitle(title);
             if (null != mayExist && !mayExist.optString(Keys.OBJECT_ID).equals(categoryId)) {
                 final JSONObject jsonObject = new JSONObject().put(Keys.STATUS_CODE, false);
@@ -271,38 +277,38 @@ public class CategoryConsole {
 
                 return;
             }
-
-            String uri = requestJSON.optString(Category.CATEGORY_URI, title);
+            boolean urlUpdateFlag = false;
             if (StringUtils.isBlank(uri)) {
                 uri = title;
+                urlUpdateFlag = true;
+            } else {
+                if (!targetCategory.optString(Category.CATEGORY_URI).equals(uri)) {
+                    urlUpdateFlag = true;
+                }
             }
-            uri = URLs.encode(uri);
-            mayExist = categoryQueryService.getByURI(uri);
-            if (null != mayExist && !mayExist.optString(Keys.OBJECT_ID).equals(categoryId)) {
-                final JSONObject jsonObject = new JSONObject().put(Keys.STATUS_CODE, false);
-                renderer.setJSONObject(jsonObject);
-                jsonObject.put(Keys.MSG, langPropsService.get("duplicatedCategoryURILabel"));
-
-                return;
+            if (urlUpdateFlag) {
+                uri = URLs.encode(uri);
+                mayExist = categoryQueryService.getByURI(uri);
+                if (null != mayExist && !mayExist.optString(Keys.OBJECT_ID).equals(categoryId)) {
+                    final JSONObject jsonObject = new JSONObject().put(Keys.STATUS_CODE, false);
+                    renderer.setJSONObject(jsonObject);
+                    jsonObject.put(Keys.MSG, langPropsService.get("duplicatedCategoryURILabel"));
+                    return;
+                }
+                if (255 <= StringUtils.length(uri)) {
+                    final JSONObject jsonObject = new JSONObject().put(Keys.STATUS_CODE, false);
+                    renderer.setJSONObject(jsonObject);
+                    jsonObject.put(Keys.MSG, langPropsService.get("categoryURITooLongLabel"));
+                    return;
+                }
             }
-            if (255 <= StringUtils.length(uri)) {
-                final JSONObject jsonObject = new JSONObject().put(Keys.STATUS_CODE, false);
-                renderer.setJSONObject(jsonObject);
-                jsonObject.put(Keys.MSG, langPropsService.get("categoryURITooLongLabel"));
-
-                return;
-            }
-
             final String desc = requestJSON.optString(Category.CATEGORY_DESCRIPTION);
 
             final JSONObject category = new JSONObject();
             category.put(Category.CATEGORY_TITLE, title);
             category.put(Category.CATEGORY_URI, uri);
             category.put(Category.CATEGORY_DESCRIPTION, desc);
-
             categoryMgmtService.updateCategory(categoryId, category);
-            categoryMgmtService.removeCategoryTags(categoryId); // remove old relations
-
             ret.put(Keys.OBJECT_ID, categoryId);
             ret.put(Keys.MSG, langPropsService.get("updateSuccLabel"));
             ret.put(Keys.STATUS_CODE, true);
@@ -319,6 +325,7 @@ public class CategoryConsole {
      * Adds a category with the specified request.
      * <p>
      * Request json:
+     * 
      * <pre>
      * {
      *     "categoryTitle": "",
@@ -330,6 +337,7 @@ public class CategoryConsole {
      * </p>
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "sc": boolean,
@@ -405,11 +413,13 @@ public class CategoryConsole {
     /**
      * Gets categories by the specified request json object.
      * <p>
-     * The request URI contains the pagination arguments. For example, the request URI is /console/categories/1/10/20, means
+     * The request URI contains the pagination arguments. For example, the request
+     * URI is /console/categories/1/10/20, means
      * the current page is 1, the page size is 10, and the window size is 20.
      * </p>
      * <p>
      * Renders the response with a json object, for example,
+     * 
      * <pre>
      * {
      *     "pagination": {

@@ -1,7 +1,7 @@
 <#--
 
     Bolo - A stable and beautiful blogging system based in Solo.
-    Copyright (c) 2020, https://github.com/adlered
+    Copyright (c) 2020-present, https://github.com/bolo-blog
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -75,6 +75,12 @@ box-shadow: 0 1px 2px 0 rgba(0,0,0,0.1);">
             </nav>
             <div class="level is-mobile">
                 <#if usite??>
+                    <#if usite.usiteResume !=''>
+                        <a class="level-item button is-marginless" target="_blank" title="个人简历"
+                           href="${usite.usiteResume}">
+                            <i class="fa fa-id-card"></i>
+                        </a>
+                    </#if>
                     <#if usite.usiteQQ !=''>
                         <a class="level-item button is-marginless" target="_blank" title="QQ"
                            href="tencent://message/?uin=${usite.usiteQQ}">
